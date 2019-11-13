@@ -1,0 +1,35 @@
+version: 2
+jobs:
+  test:
+    docker:
+      - image: circleci/golang:1.12
+
+    steps:
+      - checkout
+      - run:
+          name: Test
+          command: go test ./...
+
+  build:
+    machine: true
+    steps:
+      - checkout
+      - run:
+          name: Build docker image
+          command: |
+            docker build -t ${DOCKERHUB_USERNAME}/devops-practice .
+
+      - run:
+          name: Push docker image to DockerHub
+          command: |
+            docker login -u ${DOCKERHUB_USERNAME}" -p ${DOCKERHUB_PASSWORD}
+            docker push ${DOCKERHUB_USERNAME}/devops-practice:latest
+
+workflows:
+  version: 2
+  test_and_build:
+    jobs:
+      - test
+      - build:
+          requires:
+            - test
