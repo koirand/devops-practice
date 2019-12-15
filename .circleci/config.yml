@@ -26,6 +26,61 @@ jobs:
             docker tag ${DOCKERHUB_USERNAME}/devops-practice:latest ${DOCKERHUB_USERNAME}/devops-practice:${CIRCLE_SHA1}
             docker push ${DOCKERHUB_USERNAME}/devops-practice:latest
             docker push ${DOCKERHUB_USERNAME}/devops-practice:${CIRCLE_SHA1}
+  deploy:
+    docker:
+      - image: circleci/golang:1.12
+
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "e7:8c:10:71:a2:d5:9c:e8:0b:03:23:b6:02:32:d0:db"
+      - run:
+          name: Set env
+          command: |
+            echo "export HASH=$(git rev-parse $CIRCLE_TAG)" >> $BASH_ENV
+            echo "export HASH_SHORT=$(git rev-parse --short $CIRCLE_TAG)" >> $BASH_ENV
+            git show --no-decorate -s $CIRCLE_TAG > /tmp/tag-describe.txt
+
+      - run:
+          name: Install hub
+          command: |
+            wget -O /tmp/hub.tgz https://github.com/github/hub/releases/download/v2.13.0/hub-linux-amd64-2.13.0.tgz
+            mkdir /tmp/hub && tar xzvf /tmp/hub.tgz -C /tmp/hub --strip-components 1
+            cp /tmp/hub/bin/hub /go/bin
+
+      - run:
+          name: Install kustomize
+          command: |
+            wget -O /tmp/kustomize.tgz https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv3.5.1/kustomize_v3.5.1_linux_amd64.tar.gz
+            tar xzvf /tmp/kustomize.tgz -C /tmp
+            cp /tmp/kustomize /go/bin
+
+      - run:
+          name: Clone manifest repository
+          command: |
+            git config --global user.name ${GITHUB_USER}
+            git config --global user.email ${GITHUB_EMAIL}
+            hub clone koirand/gitops-practice /tmp/manifest
+
+      - run:
+          name: Update manifest
+          working_directory: /tmp/manifest
+          command: |
+            git checkout -b ${CIRCLE_TAG}-${HASH_SHORT}
+            (cd /tmp/manifest/sample-app/${CIRCLE_TAG} && kustomize edit set image koirand/devops-practice:${HASH})
+            git add -A
+            git commit -m "Update-${CIRCLE_TAG}-${HASH_SHORT}-$(date +"%Y%m%d")"
+            hub push origin HEAD
+
+      - run:
+          name: Create pull-request
+          working_directory: /tmp/manifest
+          command: |
+            echo "Update $CIRCLE_TAG to $HASH_SHORT" >> /tmp/pr-message.txt
+            echo >> /tmp/pr-message.txt
+            cat /tmp/tag-describe.txt >> /tmp/pr-message.txt
+            cat /tmp/pr-message.txt | hub pull-request -F -
 
 workflows:
   version: 2
@@ -35,3 +90,9 @@ workflows:
       - build:
           requires:
             - test
+      - deploy:
+          filters:
+            tags:
+              only: /dev|stg|prd/
+            branches:
+              ignore: /.*/
