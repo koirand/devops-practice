@@ -33,14 +33,14 @@ jobs:
 
     steps:
       - checkout
-      - add_ssh_keys:
-          fingerprints:
-            - "e7:8c:10:71:a2:d5:9c:e8:0b:03:23:b6:02:32:d0:db"
       - run:
           name: Set env
           command: |
+            git config --global user.name ${GITHUB_USER}
+            git config --global user.email ${GITHUB_EMAIL}
             echo "export HASH=$(git rev-parse $CIRCLE_TAG)" >> $BASH_ENV
             echo "export HASH_SHORT=$(git rev-parse --short $CIRCLE_TAG)" >> $BASH_ENV
+            # タグのコミットメッセージを取得
             git show --no-decorate -s $CIRCLE_TAG > /tmp/tag-describe.txt
 
       - run:
@@ -60,9 +60,7 @@ jobs:
       - run:
           name: Clone manifest repository
           command: |
-            git config --global user.name ${GITHUB_USER}
-            git config --global user.email ${GITHUB_EMAIL}
-            hub clone koirand/gitops-practice /tmp/manifest
+            git clone https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/koirand/devops-practice-manifest /tmp/manifest
 
       - run:
           name: Update manifest
@@ -72,7 +70,7 @@ jobs:
             (cd /tmp/manifest/sample-app/${CIRCLE_TAG} && kustomize edit set image koirand/devops-practice:${HASH})
             git add -A
             git commit -m "Update-${CIRCLE_TAG}-${HASH_SHORT}-$(date +"%Y%m%d")"
-            hub push origin HEAD
+            git push origin HEAD
 
       - run:
           name: Create pull-request
