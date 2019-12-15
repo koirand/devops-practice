@@ -26,7 +26,8 @@ jobs:
             docker tag ${DOCKERHUB_USERNAME}/devops-practice:latest ${DOCKERHUB_USERNAME}/devops-practice:${CIRCLE_SHA1}
             docker push ${DOCKERHUB_USERNAME}/devops-practice:latest
             docker push ${DOCKERHUB_USERNAME}/devops-practice:${CIRCLE_SHA1}
-  deploy:
+
+  update_manifest:
     docker:
       - image: circleci/golang:1.12
 
@@ -90,7 +91,9 @@ workflows:
       - build:
           requires:
             - test
-      - deploy:
+  deploy:
+    jobs:
+      - update_manifest:
           filters:
             tags:
               only: /dev|stg|prd/
