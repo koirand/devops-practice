@@ -23,7 +23,9 @@ jobs:
           name: Push docker image to DockerHub
           command: |
             docker login -u ${DOCKERHUB_USERNAME} -p ${DOCKERHUB_PASSWORD}
+            docker tag ${DOCKERHUB_USERNAME}/devops-practice:latest ${DOCKERHUB_USERNAME}/devops-practice:${CIRCLE_SHA1}
             docker push ${DOCKERHUB_USERNAME}/devops-practice:latest
+            docker push ${DOCKERHUB_USERNAME}/devops-practice:${CIRCLE_SHA1}
 
 workflows:
   version: 2
