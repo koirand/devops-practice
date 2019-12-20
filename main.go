@@ -9,7 +9,7 @@ import (
 func helloHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 	log.Println("access to", r.URL.Path)
-	io.WriteString(w, "Hello, world!")
+	io.WriteString(w, "Hello, world!!")
 }
 
 func main() {
